@@ -1,0 +1,433 @@
+---
+title: "Number of Foster Youth by Schools and Districts in Massachusetts"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 14px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 18px;
+}
+h1 { /* Header 1 */
+  font-size: 18px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 16px;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+
+In this report the number of students with foster care for all grades (03-08 and 10) are studied for school year 2019 in all schools and districts in Massachusetts state.\
+
+# Foster Youth Populations Based on MCAS Math Scores by Schools
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+foster <- read.csv("~/Desktop/NextGenMCAS.schools.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+
+##### MATH ######
+math <- foster[foster$Subject == "MATH",]
+math <- math[-24,]
+math$No..of.Students.Included <- as.numeric(math$No..of.Students.Included)
+schools <- aggregate(No..of.Students.Included ~ School.Name, data = math, sum)
+schools
+for (i in 1:nrow(schools)) {
+  schools$School.Name[i] <-  gsub("^.*?- ","",schools$School.Name[i])}
+
+schools$School.Name <- gsub("Mildred Avenue K-8", "Mildred Avenue K-8 School", schools$School.Name)
+schools$School.Name <- gsub("William McKinley",  "William McKinley School", schools$School.Name)
+schools$School.Name <- gsub("Dupont Middle",  "Dupont Middle School", schools$School.Name)
+schools$School.Name <- gsub("Northwest",  "Northwest School", schools$School.Name)
+schools$School.Name <- gsub("John T. Nichols Middle",  "John T Nichols Middle School", schools$School.Name)
+schools$School.Name <- gsub("Northbridge Middle",  "Northbridge Middle School", schools$School.Name)
+schools$School.Name <- gsub("Randolph Community Middle",  "Randolph Community Middle School", schools$School.Name)
+schools$School.Name <- gsub("Forest Park Middle",  "Forest Park Middle School", schools$School.Name)
+schools$School.Name <- gsub("John F Kennedy Middle",  "John F Kennedy Middle School", schools$School.Name)
+schools$School.Name <- gsub("John J Duggan Middle",  "John J Duggan Middle School", schools$School.Name)
+schools$School.Name <- gsub("M Marcus Kiley Middle",  "M. Marcus Kiley Middle School", schools$School.Name)
+schools$School.Name <- gsub("Benjamin Friedman Middle",  "Benjamin Friedman Middle School", schools$School.Name)
+schools$School.Name <- gsub("Wareham Middle",  "Wareham Middle School", schools$School.Name)
+schools$School.Name <- gsub("Forest Grove Middle",  "Forest Grove Middle School", schools$School.Name)
+schools$School.Name <- gsub("Knox Trail Middle School",  "Knox Trail Junior High School", schools$School.Name)
+names(schools)[2] <- 'Number.FosterStudents'
+```
+
+\
+
+## The Graph for Foster Youth Populations Based on MCAS Math Scores by Schools
+\
+
+Followed is the barplot for total number of students with foster care according to MCAS Math for school year 2019 by schools in Massachusetts.\
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+library(ggplot2)
+library(dplyr)
+library(forcats)
+schools %>%
+  mutate(School.Name = fct_reorder(School.Name, desc(Number.FosterStudents))) %>%
+ggplot(aes(x=School.Name, y=Number.FosterStudents)) +
+  geom_bar(stat="identity", fill="navy")+
+  geom_text(aes(label=Number.FosterStudents), vjust=-0.3, size=3.5) + theme_bw() + xlab("School Name") + ylab("Population of Foster Youth Based on MCAS Math") + ggtitle("Number of Foster Care Students by Schools in MA in 2019 for All Grades According to MCAS Math Scores") + theme(text = element_text(size=8)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8)) 
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+library(sf)
+library(tmap)
+schools <- transform(schools, FosterStudents_Percent = schools$Number.FosterStudents/(sum(schools$Number.FosterStudents))*100)
+schools
+point <- st_read(dsn="~/Desktop/School_data_CFJJ_analysis_for_Mehrnaz/Shapefiles_SCHOOL_SCHOOLDISTRICT/SCHOOLS_PT.shp")
+point <- merge(point, schools, by.x='NAME', by.y = 'School.Name', all.y=TRUE)
+point <- point[-c(10,11,12),]
+allStudents <- read.csv("~/Desktop/allStudents.District.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+poly <- st_read(dsn="~/Desktop/School_data_CFJJ_analysis_for_Mehrnaz/Shapefiles_SCHOOL_SCHOOLDISTRICT/SCHOOLDISTRICTS_POLY.shp")
+poly <- merge(poly, allStudents, by.x='DISTRICT_N', by.y = 'District.Name', all = TRUE)
+```
+
+\
+
+## The Map for Foster Youth Populations Based on MCAS Math Scores by Schools
+\
+
+Followed is the map, which indicates the number of students with foster care based on MCAS Math by schools in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+tmap_mode('view')
+tm_shape(poly) + tm_fill('grey86') + tm_borders("gold", lwd = 1) + tm_basemap(server = c('OpenStreetMap')) +
+  tm_shape(point) + tm_dots("Number.FosterStudents", style = "jenks", size = 0.3, palette='Greens')  +  tm_view(alpha = 0.85, view.legend.position = c("left", "bottom")) + tm_layout(title = 'Population of Foster Youth Based on MCAS Math by Schools')
+```
+
+
+\
+
+## The Map for Percentage of Foster Youth Populations Based on MCAS Math Scores by Schools
+\
+
+Followed is the map, which indicates the percentage of students with foster care based on MCAS Math by schools in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+make_percent <- function(x, digits = 2) {
+  paste0("%", formatC(x, digits = digits, format = "f", big.mark = ","))
+}
+tmap_mode('view')
+tm_shape(poly) + tm_fill("antiquewhite") + tm_borders("antiquewhite4", lwd = 1) + tm_basemap(server = c('OpenStreetMap')) +
+  tm_shape(point) + tm_dots("FosterStudents_Percent", style = "equal", size = 0.3, palette='Blues', popup.format = list(fun = make_percent), legend.format = list(fun = make_percent))  +  tm_view(alpha = 0.85, view.legend.position = c("left", "bottom")) 
+```
+
+
+
+\
+
+# Foster Youth Populations Based on MCAS ELA Scores by Schools
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+ELA <- foster[foster$Subject == "ELA",]
+ELA <- ELA[-27,]
+ELA$No..of.Students.Included <- as.numeric(ELA$No..of.Students.Included)
+schools2 <- aggregate(No..of.Students.Included ~ School.Name, data = ELA, sum)
+
+for (i in 1:nrow(schools2)) {
+  schools2$School.Name[i] <-  gsub("^.*?- ","",schools2$School.Name[i])}
+
+schools2$School.Name <- gsub("Mildred Avenue K-8", "Mildred Avenue K-8 School", schools2$School.Name)
+schools2$School.Name <- gsub("William McKinley",  "William McKinley School", schools2$School.Name)
+schools2$School.Name <- gsub("Dupont Middle",  "Dupont Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Northwest",  "Northwest School", schools2$School.Name)
+schools2$School.Name <- gsub("John T. Nichols Middle",  "John T Nichols Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Northbridge Middle",  "Northbridge Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Randolph Community Middle",  "Randolph Community Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Forest Park Middle",  "Forest Park Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("John F Kennedy Middle",  "John F Kennedy Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("John J Duggan Middle",  "John J Duggan Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("M Marcus Kiley Middle",  "M. Marcus Kiley Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Benjamin Friedman Middle",  "Benjamin Friedman Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Wareham Middle",  "Wareham Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Forest Grove Middle",  "Forest Grove Middle School", schools2$School.Name)
+schools2$School.Name <- gsub("Knox Trail Middle School",  "Knox Trail Junior High School", schools2$School.Name)
+names(schools2)[2] <- 'Number.FosterStudents'
+```
+
+\
+
+## The Graph for Foster Youth Populations Based on MCAS ELA Scores by Schools
+\
+
+Followed is the barplot for total number of students with foster care according to MCAS ELA for school year 2019 by schools in Massachusetts.\
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+schools2 %>%
+  mutate(School.Name = fct_reorder(School.Name, desc(Number.FosterStudents))) %>%
+ggplot(aes(x=School.Name, y=Number.FosterStudents)) +
+  geom_bar(stat="identity", fill="cadetblue")+
+  geom_text(aes(label=Number.FosterStudents), vjust=-0.3, size=3.5) + theme_bw() + xlab("School Names") + ylab("Population of Foster Youth Based on MCAS ELA") + ggtitle("Number of Foster Care Students by Schools in MA in 2019 for All Grades According to MCAS ELA Scores") + theme(text = element_text(size=8)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 10)) 
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+schools2 <- transform(schools2, FosterStudents_Percent = schools2$Number.FosterStudents/(sum(schools2$Number.FosterStudents))*100)
+point <- st_read(dsn="~/Desktop/School_data_CFJJ_analysis_for_Mehrnaz/Shapefiles_SCHOOL_SCHOOLDISTRICT/SCHOOLS_PT.shp")
+point <- merge(point, schools2, by.x='NAME', by.y = 'School.Name', all.y=TRUE)
+point <- point[-c(9,11,12),]
+```
+
+\
+
+## The Map for Foster Youth Populations Based on MCAS ELA Scores by Schools
+\
+
+Followed is the map, which indicates the number of students with foster care based on MCAS ELA by schools in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+tmap_mode('view')
+tm_shape(poly) + tm_fill('grey86') + tm_borders("gold", lwd = 1) + tm_basemap(server = c('OpenStreetMap')) +
+  tm_shape(point) + tm_dots("Number.FosterStudents", style = "jenks", size = 0.3)  +  tm_view(alpha = 0.85, view.legend.position = c("left", "bottom")) 
+```
+
+
+\
+
+## The Map for Percentage of Foster Youth Populations Based on MCAS ELA Scores by Schools
+\
+
+Followed is the map, which indicates the percentage of students with foster care based on MCAS ELA by schools in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+make_percent <- function(x, digits = 2) {
+  paste0("%", formatC(x, digits = digits, format = "f", big.mark = ","))
+}
+tmap_mode('view')
+tm_shape(poly) + tm_fill("antiquewhite") + tm_borders("antiquewhite4", lwd = 1) + tm_basemap(server = c('OpenStreetMap')) +
+  tm_shape(point) + tm_dots("FosterStudents_Percent", style = "equal", size = 0.3,  palette='Purples', popup.format = list(fun = make_percent), legend.format = list(fun = make_percent))  +  tm_view(alpha = 0.85, view.legend.position = c("left", "bottom")) 
+```
+
+\
+
+# Foster Youth Populations Based on MCAS Math Scores by District
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+foster.Dist <- read.csv("~/Desktop/NextGenMCAS.District.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+foster.Dist10 <- read.csv("~/Desktop/NextGenMCAS.District.Grade10.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+foster.Dist <- rbind(foster.Dist, foster.Dist10)
+foster.Dist <- foster.Dist[-c(158, 157, 144, 145, 146),]
+foster.Dist$No..of.Students.Included <- as.numeric(foster.Dist$No..of.Students.Included)
+dist.math <- foster.Dist[foster.Dist$Subject == "MATH",]
+dist.math <- aggregate(No..of.Students.Included ~ District.Name, data = dist.math, sum)
+names(dist.math)[2] <- 'Number.FosterStudents'
+dist.math
+```
+
+\
+
+## The Graph for Foster Youth Populations Based on MCAS Math by District
+\
+
+Followed is the barplot for total number of students with foster care for all grades (03-08 and 10) according to MCAS Math scores for school year 2019 by district in Massachusetts.\
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+dist.math %>%
+  mutate(District.Name = fct_reorder(District.Name, desc(Number.FosterStudents))) %>%
+ggplot(aes(x=District.Name, y=Number.FosterStudents)) +
+  geom_bar(stat="identity", fill="burlywood3")+ theme_bw() + xlab("District Name") + ylab("Population of Foster Youth Based on MCAS Math") + ggtitle("Number of Foster Care Students by Districts in MA in 2019 for All Grades According to MCAS Math Scores") + theme(text = element_text(size=8)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8)) 
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+dist.math <- transform(dist.math, FosterStudents_Percent = dist.math$Number.FosterStudents/(sum(dist.math$Number.FosterStudents))*100)
+polygon <- st_read(dsn="~/Desktop/School_data_CFJJ_analysis_for_Mehrnaz/Shapefiles_SCHOOL_SCHOOLDISTRICT/SCHOOLDISTRICTS_POLY.shp")
+polygon <- merge(polygon, dist.math, by.x = 'DISTRICT_N', by.y='District.Name', all = TRUE)
+```
+
+\
+
+## The Map for Foster Youth Populations Based on MCAS Math Scores by District
+\
+
+Followed is the map, which indicates the number of students with foster care for all grades (03-08 and 10) based on MCAS Math scores by districts in MA for school year 2019.\
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+tmap_mode('view')
+tm_shape(polygon) + tm_polygons('Number.FosterStudents', style = "jenks",  palette='Reds')  + tm_view(alpha = 0.85,view.legend.position = c("left", "bottom"),basemaps = "Stamen.TonerLite") + tm_borders(col = "darkgray") + tmap_options(show.messages = FALSE) + tm_basemap(server = c('OpenStreetMap')) 
+```
+
+
+\
+
+## The Map for Percentage of Foster Youth Populations Based on MCAS Math Scores by Districts
+\
+
+Followed is the map, which indicates the percentage of students with foster care for all grades (03-08 and 10) based on MCAS Math scores by districts in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+make_percent <- function(x, digits = 2) {
+  paste0("%", formatC(x, digits = digits, format = "f", big.mark = ","))
+}
+tmap_mode('view')
+tm_shape(polygon) + tm_polygons('FosterStudents_Percent', style = "jenks", palette='Blues', popup.format = list(fun = make_percent), legend.format = list(fun = make_percent)) + tm_view(alpha = 0.85,view.legend.position = c("left", "bottom"),basemaps = "Stamen.TonerLite") + tm_borders(col = "darkgray") + tmap_options(show.messages = FALSE) + tm_basemap(server = c('OpenStreetMap')) 
+```
+
+
+
+
+\
+
+# Foster Youth Populations Based on MCAS ELA Scores by District
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+foster.Dist <- read.csv("~/Desktop/NextGenMCAS.District.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+foster.Dist10 <- read.csv("~/Desktop/NextGenMCAS.District.Grade10.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+foster.Dist <- rbind(foster.Dist, foster.Dist10)
+foster.Dist <- foster.Dist[-c(158, 157, 144, 145, 146),]
+foster.Dist$No..of.Students.Included <- as.numeric(foster.Dist$No..of.Students.Included)
+dist.ELA <- foster.Dist[foster.Dist$Subject == "ELA",]
+dist.ELA <- aggregate(No..of.Students.Included ~ District.Name, data = dist.ELA, sum)
+names(dist.ELA)[2] <- 'Number.FosterStudents'
+dist.ELA
+```
+
+\
+
+## The Graph for Foster Youth Populations Based on MCAS ELA Scores by District
+\
+
+Followed is the barplot for total number of students with foster care for all grades (03-08 and 10) according to MCAS ELA scores for school year 2019 by district in Massachusetts.\
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+dist.ELA %>%
+  mutate(District.Name = fct_reorder(District.Name, desc(Number.FosterStudents))) %>%
+ggplot(aes(x=District.Name, y=Number.FosterStudents)) +
+  geom_bar(stat="identity", fill="firebrick4")+ theme_bw() + xlab("District Name") + ylab("Population of Foster Youth Based on MCAS ELA") + ggtitle("Number of Foster Care Students by Districts in MA in 2019 for All Grades According to MCAS ELA Scores") + theme(text = element_text(size=8)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8)) 
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+dist.ELA <- transform(dist.ELA, FosterStudents_Percent = dist.ELA$Number.FosterStudents/(sum(dist.ELA$Number.FosterStudents))*100)
+polygon <- st_read(dsn="~/Desktop/School_data_CFJJ_analysis_for_Mehrnaz/Shapefiles_SCHOOL_SCHOOLDISTRICT/SCHOOLDISTRICTS_POLY.shp")
+polygon <- merge(polygon, dist.ELA, by.x = 'DISTRICT_N', by.y='District.Name', all = TRUE)
+```
+
+\
+
+## The Map for Foster Youth Populations Based on MCAS ELA Scores by District
+\
+
+Followed is the map, which indicates the number of students with foster care for all grades (03-08 and 10) based on MCAS ELA scores by districts in MA for school year 2019.\
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+tmap_mode('view')
+tm_shape(polygon) + tm_polygons('Number.FosterStudents', style = "jenks",  palette='Greens')  + tm_view(alpha = 0.85,view.legend.position = c("left", "bottom"),basemaps = "Stamen.TonerLite") + tm_borders(col = "darkgray") + tmap_options(show.messages = FALSE) + tm_basemap(server = c('OpenStreetMap')) 
+```
+
+
+\
+
+## The Map for Percentage of Foster Youth Populations Based on MCAS ELA Scores by Districts
+\
+
+Followed is the map, which indicates the percentage of students with foster care for all grades (03-08 and 10) based on MCAS ELA scores by districts in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+make_percent <- function(x, digits = 2) {
+  paste0("%", formatC(x, digits = digits, format = "f", big.mark = ","))
+}
+tmap_mode('view')
+tm_shape(polygon) + tm_polygons('FosterStudents_Percent', style = "jenks", popup.format = list(fun = make_percent), legend.format = list(fun = make_percent)) + tm_view(alpha = 0.85,view.legend.position = c("left", "bottom"),basemaps = "Stamen.TonerLite") + tm_borders(col = "darkgray") + tmap_options(show.messages = FALSE) + tm_basemap(server = c('OpenStreetMap')) 
+```
+
+
+
+
+\
+
+# Foster Youth Populations Based on MCAS SCI Scores by District
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+foster.Dist <- read.csv("~/Desktop/NextGenMCAS.District.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+foster.Dist10 <- read.csv("~/Desktop/NextGenMCAS.District.Grade10.csv", sep = ",", header = TRUE, stringsAsFactors=FALSE)
+foster.Dist <- rbind(foster.Dist, foster.Dist10)
+foster.Dist <- foster.Dist[-c(158, 157, 144, 145, 146),]
+foster.Dist$No..of.Students.Included <- as.numeric(foster.Dist$No..of.Students.Included)
+dist.SCI <- foster.Dist[foster.Dist$Subject == "SCI",]
+dist.SCI <- aggregate(No..of.Students.Included ~ District.Name, data = dist.SCI, sum)
+names(dist.SCI)[2] <- 'Number.FosterStudents'
+```
+
+\
+
+## The Graph for Foster Youth Populations Based on MCAS SCI Scores by District
+\
+
+Followed is the barplot for total number of students with foster care for all grades according to MCAS SCI scores for school year 2019 by district in Massachusetts.\
+\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+dist.SCI %>%
+  mutate(District.Name = fct_reorder(District.Name, desc(Number.FosterStudents))) %>%
+ggplot(aes(x=District.Name, y=Number.FosterStudents)) +
+  geom_bar(stat="identity", fill="deeppink4")+ theme_bw() + xlab("District Name") + ylab("Population of Foster Youth Based on MCAS SCI") + ggtitle("Number of Foster Care Students by District in MA in 2019 for All Grades According to MCAS SCI Scores") + theme(text = element_text(size=8)) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8)) + geom_text(aes(label=Number.FosterStudents), vjust=-0.3, size=3.5) 
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', comment=""}
+dist.SCI <- transform(dist.SCI, FosterStudents_Percent = dist.SCI$Number.FosterStudents/(sum(dist.SCI$Number.FosterStudents))*100)
+polygon <- st_read(dsn="~/Desktop/School_data_CFJJ_analysis_for_Mehrnaz/Shapefiles_SCHOOL_SCHOOLDISTRICT/SCHOOLDISTRICTS_POLY.shp")
+polygon <- merge(polygon, dist.SCI, by.x = 'DISTRICT_N', by.y='District.Name', all = TRUE)
+```
+
+\
+
+## The Map for Foster Youth Populations Based on MCAS SCI Scores by District
+\
+
+Followed is the map, which indicates the number of students with foster care for all grades based on MCAS SCI scores by districts in MA for school year 2019.\
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+tmap_mode('view')
+tm_shape(polygon) + tm_polygons('Number.FosterStudents', style = "jenks",  palette='Oranges')  + tm_view(alpha = 0.85,view.legend.position = c("left", "bottom"),basemaps = "Stamen.TonerLite") + tm_borders(col = "darkgray") + tmap_options(show.messages = FALSE) + tm_basemap(server = c('OpenStreetMap')) 
+```
+
+
+\
+
+## The Map for Percentage of Foster Youth Populations Based on MCAS SCI Scores by Districts
+\
+
+Followed is the map, which indicates the percentage of students with foster care for all grades based on MCAS SCI scores by districts in MA for school year 2019.\
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+make_percent <- function(x, digits = 2) {
+  paste0("%", formatC(x, digits = digits, format = "f", big.mark = ","))
+}
+tmap_mode('view')
+tm_shape(polygon) + tm_polygons('FosterStudents_Percent', style = "jenks", palette='Purples', popup.format = list(fun = make_percent), legend.format = list(fun = make_percent)) + tm_view(alpha = 0.85,view.legend.position = c("left", "bottom"),basemaps = "Stamen.TonerLite") + tm_borders(col = "darkgray") + tmap_options(show.messages = FALSE) + tm_basemap(server = c('OpenStreetMap')) 
+```
